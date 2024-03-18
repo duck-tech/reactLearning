@@ -1,0 +1,175 @@
+// ProgressLogger.tsx
+import React, { useState } from 'react';
+import { RenderRectangles } from './Rectangle';
+
+
+const ProgressLogger: React.FC = () => {
+  const [progress, setProgress] = useState(0);
+  const totalRectangles = 20;
+  const progressIncrement = 5;
+
+  const handleAddProgress = () => {
+    if (progress < 100) {
+      setProgress(progress + progressIncrement);
+    }
+  };
+
+  const handleReset = () => {
+    setProgress(0);
+  };
+
+  return (
+    <>
+      <h1>Progress Logger</h1>
+      <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center' }}>
+        <RenderRectangles total={totalRectangles} progress={progress} increment={progressIncrement} />
+      </div>
+      <div data-testid="progress-percent-number">{progress}%</div>
+      <button
+        data-testid="add-progress"
+        onClick={handleAddProgress}
+        disabled={progress >= 100}
+        style={{ backgroundColor: progress >= 100 ? 'grey' : 'buttonface' }}
+      >
+        Add Progress
+      </button>
+      {progress >= 100 && (
+        <button data-testid="reset-progress" onClick={handleReset}>
+          Reset
+        </button>
+      )}
+    </>
+  );
+};
+
+export default ProgressLogger;
+
+
+import React from 'react';
+
+// 定义 Rectangle 组件的 Props 类型
+interface RectangleProps {
+  active: boolean;
+}
+
+// Rectangle 组件
+const Rectangle: React.FC<RectangleProps> = ({ active }) => (
+  <div style={{
+    width: '100px', 
+    height: '50px', 
+    margin: '5px',
+    backgroundColor: active ? 'green' : 'grey',
+  }}
+   data-testid="progress-rectangle" 
+   /> 
+    //   <div className={`rectangle ${active ? 'rectangle-active' : 'rectangle-inactive'}`} data-testid="progress-rectangle" />
+);
+
+// 定义 RenderRectangles 组件的 Props 类型
+interface RenderRectanglesProps {
+  total: number;
+  progress: number;
+  increment: number;
+}
+
+// RenderRectangles 组件
+const RenderRectangles: React.FC<RenderRectanglesProps> = ({ total, progress, increment }) => (
+    <>
+      {[...Array(total)].map((_, index) => (
+        <Rectangle key={index} active={index < progress / increment} />
+      ))}
+    </>
+  );
+
+export { Rectangle, RenderRectangles };
+
+
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import ProgressLogger from '../src/components/ProgressLogger';
+import React from 'react';
+
+describe('ProgressLogger', () => {
+    beforeEach(() => {
+        render(<ProgressLogger />);
+    });
+
+  it('renders the progress Logger component title', () => {
+    const titleElement=screen.getByRole('heading')
+    expect(titleElement).toBeInTheDocument();  
+    });
+
+    it ('renders the progress bar with 20 rectangles', () => {
+        const rectangles = screen.getAllByTestId('progress-rectangle')
+        expect(rectangles).toHaveLength(20)
+    })
+
+    it ('renders the progress bar rectangles all with background gray, when percent is 0', () => {
+        const rectangles = screen.getAllByTestId('progress-rectangle')
+        expect(rectangles[0]).toHaveStyle('background-color: rgba(128, 128, 128, 100)')
+    })
+
+    it ('display the progress percentage of 0%, when the progress bar is new and progress is 0', () => {
+        const percentNumber = screen.getByTestId('progress-percent-number')
+        expect(percentNumber).toHaveTextContent('0%')
+    })
+
+    it ("renders the 'Add Progress' button", () => {
+        const addProgressButton = screen.getByTestId('add-progress')
+        expect(addProgressButton).toBeInTheDocument()
+    })
+
+    it ("displays the progress percentage of 5%, when the progress is 5", () => {
+        const addProgressButton = screen.getByTestId('add-progress')
+        fireEvent.click(addProgressButton)
+        const percentNumber = screen.getByTestId('progress-percent-number')
+        expect(percentNumber).toHaveTextContent('5%')
+    })
+
+    it("shows a green rectangle for each 5% of progress", () => {
+        const addProgressButton = screen.getByTestId('add-progress')
+        fireEvent.click(addProgressButton)
+        const rectangles = screen.getAllByTestId('progress-rectangle')
+        expect(rectangles[0]).toHaveStyle('background-color: rgba(0, 128, 0, 100)')
+});
+      
+      it("should not exceed 100% progress", async () => {
+        const addProgressButton = screen.getByTestId('add-progress');
+        for (let i = 0; i < 25; i++) {
+          await userEvent.click(addProgressButton);
+        }
+        const percentNumber = screen.getByTestId('progress-percent-number');
+        expect(percentNumber).toHaveTextContent('100%');
+      });
+      
+      it("shows a 'Reset' button when the progress reaches 100%", () => {
+        const addProgressButton = screen.getByTestId('add-progress');
+        for (let i = 0; i < 20; i++) {
+          fireEvent.click(addProgressButton);
+        }
+        const resetButton = screen.getByTestId('reset-progress');
+        expect(resetButton).toBeInTheDocument();
+      });
+      
+      it("resets the progress to 0% when the reset button is clicked", () => {
+        const addProgressButton = screen.getByTestId('add-progress');
+
+        for (let i = 0; i < 20; i++) {
+          fireEvent.click(addProgressButton);
+        }
+        const resetButton = screen.getByTestId('reset-progress');
+        fireEvent.click(resetButton);
+        const percentNumber = screen.getByTestId('progress-percent-number');
+        expect(percentNumber).toHaveTextContent('0%');
+      });
+      
+     it("does not render the reset button when the progress is under 100%", () => {
+        const resetButton = screen.queryByTestId('reset-progress');
+        expect(resetButton).not.toBeInTheDocument();
+    });
+});
+
+
+// tests/setup.ts
+import '@testing-library/jest-dom';
